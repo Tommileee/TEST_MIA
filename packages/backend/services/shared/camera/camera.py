@@ -33,7 +33,7 @@ import tornado
 import tornado.web
 import tornado.gen
 import cv2
-from camera_stream import CameraStream  # Stellen Sie sicher, dass der Importpfad korrekt ist
+from shared.maera.camera import CameraStream  # Stellen Sie sicher, dass der Importpfad korrekt ist
 
 camera_stream = CameraStream()  # Initialisieren Sie die Kamera-Stream-Instanz global
 
