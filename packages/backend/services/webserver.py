@@ -33,7 +33,7 @@ import tornado
 import tornado.web
 import tornado.gen
 import cv2
-from services.shared.camera.camera import CameraStream
+from shared.camera.camera import CameraStream
 
 camera_stream = CameraStream()  # Initialisieren Sie die Kamera-Stream-Instanz global
 
