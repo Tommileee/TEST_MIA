@@ -33,7 +33,6 @@ import tornado
 import tornado.web
 import tornado.gen
 import cv2
-from services.shared.camera.camera import CameraStream
 
 camera_stream = CameraStream()  # Initialisieren Sie die Kamera-Stream-Instanz global
 
@@ -45,9 +44,13 @@ class MJPEGStreamHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def get(self):
         self.set_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
+        file_path = "/shared/web/captured_image.jpeg"  # Pfad des Bildes
 
         while True:
-            frame = camera_stream.get_frame()
+            if not os.path.exists(file_path):
+                continue  # Wenn das Bild nicht existiert, überspringen
+
+            frame = cv2.imread(file_path)
             if frame is None:
                 continue  # Wenn kein Frame verfügbar ist, überspringen
 
@@ -58,6 +61,9 @@ class MJPEGStreamHandler(tornado.web.RequestHandler):
             self.write(jpeg.tobytes())
             self.write("\r\n")
             yield self.flush()
+
+            # Wartezeit, um 24 Frames pro Sekunde zu erreichen
+            yield tornado.gen.sleep(1/24)
 
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
