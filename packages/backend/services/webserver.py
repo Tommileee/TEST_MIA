@@ -42,22 +42,24 @@ publisher = Publisher()
 arduino = Arduino()
 
 class MJPEGStreamHandler(tornado.web.RequestHandler):
-    @tornado.gen.coroutine
-    def get(self):
+    def initialize(self):
         self.set_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
 
+    @tornado.gen.coroutine
+    def get(self):
         while True:
             frame = camera_stream.get_frame()
-            if frame is None:
-                continue  # Wenn kein Frame verfügbar ist, überspringen
-
-            _, jpeg = cv2.imencode('.jpg', frame)
-            self.write("--frame\r\n")
-            self.write("Content-Type: image/jpeg\r\n")
-            self.write(f"Content-Length: {len(jpeg)}\r\n\r\n")
-            self.write(jpeg.tobytes())
-            self.write("\r\n")
-            yield self.flush()
+            if frame is not None:
+                _, jpeg = cv2.imencode('.jpg', frame)
+                self.write("--frame\r\n")
+                self.write("Content-Type: image/jpeg\r\n")
+                self.write("Content-Length: {}\r\n\r\n".format(len(jpeg)))
+                self.write(jpeg.tobytes())
+                self.write("\r\n")
+                yield self.flush()
+            else:
+                # Wenn kein Frame verfügbar ist, warten Sie einen Moment, bevor Sie es erneut versuchen
+                yield tornado.gen.sleep(0.1)
 
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
