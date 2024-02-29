@@ -35,6 +35,7 @@ import tornado.gen
 import cv2
 
 
+
 publisher = Publisher()
 arduino = Arduino()
 
@@ -42,15 +43,15 @@ class MJPEGStreamHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def get(self):
         self.set_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
-        file_path = "/shared/web/captured_image.jpeg"  # Pfad des Bildes
+        file_path = "/shared/web/captured_image.jpeg"
 
         while True:
             if not os.path.exists(file_path):
-                continue  # Wenn das Bild nicht existiert, überspringen
+                continue
 
             frame = cv2.imread(file_path)
             if frame is None:
-                continue  # Wenn kein Frame verfügbar ist, überspringen
+                continue
 
             _, jpeg = cv2.imencode('.jpg', frame)
             self.write("--frame\r\n")
@@ -60,7 +61,7 @@ class MJPEGStreamHandler(tornado.web.RequestHandler):
             self.write("\r\n")
             yield self.flush()
 
-            # Wartezeit, um 24 Frames pro Sekunde zu erreichen
+            # Kurze Pause, um den Stream zu verlangsamen
             yield tornado.gen.sleep(1/24)
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -161,7 +162,7 @@ def make_app():
         (r"/api/driving-advanced", DrivingAdvancedHandler),
         (r"/api/driving-simple", DrivingSimpleHandler),
         (r"/websocket", WebSocketHandler),
-        (r"/mjpeg-stream", MJPEGStreamHandler),
+        (r"/stream", MJPEGStreamHandler),
         (r"/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(os.path.dirname(__file__), "shared/web")}),
     ])
 
@@ -206,15 +207,8 @@ if __name__ == "__main__":
     ssl_ctx.load_cert_chain(certfile=cert_file_path, keyfile=key_file_path)
 
     server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_ctx)
-    server.bind(1606)  # Bind to port 8888 or any other port you prefer
+    server.listen(1606)  # Bind to port 8888 or any other port you prefer
     #server.start(0)  # Automatically start the same number of processes as cores available
-
-    try:
-        tornado.ioloop.IOLoop.current().start()
-    except KeyboardInterrupt:
-        print("Shutting down server.")
-    finally:
-        camera_stream.close()
-
+    tornado.ioloop.IOLoop.current().start()
     os.unlink(cert_file_path)
     os.unlink(key_file_path)
