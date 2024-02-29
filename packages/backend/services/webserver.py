@@ -34,8 +34,6 @@ import tornado.web
 import tornado.gen
 import cv2
 
-camera_stream = CameraStream()  # Initialisieren Sie die Kamera-Stream-Instanz global
-
 
 publisher = Publisher()
 arduino = Arduino()
