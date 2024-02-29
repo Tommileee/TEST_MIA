@@ -41,31 +41,26 @@ publisher = Publisher()
 arduino = Arduino()
 cam = None
  
-class StreamHandler(tornado.web.RequestHandler):
+class MJPEGHandler(tornado.web.RequestHandler):
     async def get(self):
-        ioloop = tornado.ioloop.IOLoop.current()
- 
         self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-        self.set_header( 'Pragma', 'no-cache')
-        self.set_header( 'Content-Type', 'multipart/x-mixed-replace;boundary=--jpgboundary')
+        self.set_header('Pragma', 'no-cache')
+        self.set_header('Content-Type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
         self.set_header('Connection', 'close')
- 
-        self.served_image_timestamp = time.time()
+
+        camera = UsbCamera()
         my_boundary = "--jpgboundary"
         while True:
-            # Generating images for mjpeg stream and wraps them into http resp
-            if self.get_argument('fd') == "true":
-                img = cam.get_frame(True)
-            else:
-                img = cam.get_frame(False)
-            interval = 0.1
-            if self.served_image_timestamp + interval < time.time():
-                self.write(my_boundary)
-                self.write("Content-type: image/jpeg\r\n")
-                self.write("Content-length: %s\r\n\r\n" % len(img))
-                self.write(img)
-                self.served_image_timestamp = time.time()
-                await self.flush()
+            # Prüfen, ob Gesichtserkennung aktiviert sein soll
+            fdenable = self.get_argument('fd', default="false") == "true"
+            img = camera.get_frame(fdenable)
+
+            self.write(my_boundary)
+            self.write("Content-type: image/jpeg\r\n")
+            self.write(f"Content-length: {len(img)}\r\n\r\n")
+            self.write(img)
+            await self.flush()  # Nicht-blockierendes Flush
+            await tornado.gen.sleep(0.1)  # Kontrolliert die Übertragungsrate
  
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
@@ -165,7 +160,7 @@ def make_app():
         (r"/api/driving-advanced", DrivingAdvancedHandler),
         (r"/api/driving-simple", DrivingSimpleHandler),
         (r"/websocket", WebSocketHandler),
-        (r'/video_feed', StreamHandler),
+        (r'/video_feed', MJPEGHandler),
         (r"/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(os.path.dirname(__file__), "shared/web")}),
     ])
  
