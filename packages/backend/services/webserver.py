@@ -34,7 +34,7 @@ import tornado.gen
 from tornado.concurrent import run_on_executor
 from concurrent.futures import ThreadPoolExecutor
 
-from camera_file import CameraStream  # Stellen Sie sicher, dass camera_file.py im gleichen Verzeichnis ist
+from shared.camera.camera import CameraStream  # Stellen Sie sicher, dass camera_file.py im gleichen Verzeichnis ist
 
 
 publisher = Publisher()
