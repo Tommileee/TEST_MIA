@@ -33,6 +33,6 @@ def capture_and_save_image(frequency, duration, file_path):
 # die Dauer der Bildaufnahme in Sekunden und den Pfad der Datei fest
 frequency = 24  # Bilder pro Sekunde
 duration = 10   # Dauer in Sekunden, für wie lange Bilder aufgenommen werden sollen
-file_path = "/shared/web/captured_image.jpeg"  # Pfad, wo das Bild gespeichert wird
+file_path = "/web/captured_image.jpeg"  # Pfad, wo das Bild gespeichert wird
 
 capture_and_save_image(frequency, duration, file_path)
