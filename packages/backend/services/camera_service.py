@@ -1,38 +1,22 @@
 import cv2
-import time
 
-def capture_and_save_image(frequency, duration, file_path):
-    # Initialisiere die Kamera
+def capture_continuous(frequency, file_path):
     cap = cv2.VideoCapture(0)  # 0 steht für die erste angeschlossene Kamera
-
+    
     if not cap.isOpened():
         print("Kann Kamera nicht öffnen")
         return
-
-    start_time = time.time()
-    end_time = start_time + duration
-    interval = 1 / frequency
-
-    while time.time() < end_time:
+    
+    while True:
         ret, frame = cap.read()
         if ret:
-            # Bild speichern
             cv2.imwrite(file_path, frame)
         else:
             print("Kann Bild nicht erfassen")
             break
         
-        # Warte, um die Frequenz von 24 Bildern pro Sekunde zu erreichen
-        time.sleep(interval)
+        # Wartezeit, um die gewünschte Frequenz zu erreichen
+        cv2.waitKey(int(1000/frequency))
 
-    # Ressourcen freigeben
-    cap.release()
-    cv2.destroyAllWindows()
-
-# Legen Sie die Frequenz der Bildaufnahme (24 Bilder pro Sekunde),
-# die Dauer der Bildaufnahme in Sekunden und den Pfad der Datei fest
-frequency = 24  # Bilder pro Sekunde
-duration = 10   # Dauer in Sekunden, für wie lange Bilder aufgenommen werden sollen
-file_path = "/web/captured_image.jpeg"  # Pfad, wo das Bild gespeichert wird
-
-capture_and_save_image(frequency, duration, file_path)
+if __name__ == "__main__":
+    capture_continuous(24, "/shared/web/captured_image.jpeg")
