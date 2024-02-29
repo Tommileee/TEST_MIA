@@ -1,0 +1,15 @@
+[Unit]
+Description=Service for MIA Software
+After=network.target
+
+[Service]
+ExecStart=/bin/bash -c '/home/mia/mia/packages/backend/start.sh'
+WorkingDirectory=/home/mia/mia/packages/backend
+Type=oneshot
+RemainAfterExit=yes
+User=mia
+Environment=PM2_HOME=/home/mia/.pm2
+PIDFile=/home/mia/.pm2/pm2.pid
+
+[Install]
+WantedBy=multi-user.target
