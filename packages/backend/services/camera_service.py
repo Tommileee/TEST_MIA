@@ -1,28 +1,34 @@
 import cv2
 import os
 
-def capture_continuous(frequency, file_path):
-    cap = cv2.VideoCapture(0)
-    
+def capture_continuous(frequency):
+    cap = cv2.VideoCapture(0)  # 0 steht für die erste angeschlossene Kamera
+
     if not cap.isOpened():
         print("Kann Kamera nicht öffnen")
         return
-    
+
+    # Ermitteln des Pfades zum aktuellen Skriptverzeichnis
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Zielverzeichnis relativ zum Skriptverzeichnis
+    target_dir = os.path.join(current_dir, "shared", "web")
+
+    # Stellen Sie sicher, dass das Zielverzeichnis existiert
+    os.makedirs(target_dir, exist_ok=True)
+
+    file_path = os.path.join(target_dir, "captured_image.jpeg")
+
     while True:
         ret, frame = cap.read()
         if ret:
-            try:
-                cv2.imwrite(file_path, frame)
-                print("Bild gespeichert bei:", file_path)  # Bestätigung hinzugefügt
-            except Exception as e:
-                print("Fehler beim Speichern des Bildes:", e)
+            cv2.imwrite(file_path, frame)
+            print(f"Bild gespeichert bei: {file_path}")
         else:
             print("Kann Bild nicht erfassen")
 
-        cv2.waitKey(int(1000/frequency))
+        # Wartezeit, um die gewünschte Frequenz zu erreichen
+        cv2.waitKey(int(1000 / frequency))
 
 if __name__ == "__main__":
-    # Stellen Sie sicher, dass der Pfad existiert oder fügen Sie Code hinzu, um ihn zu erstellen
-    file_path = "/shared/web/captured_image.jpeg"
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Ordner erstellen, falls nicht vorhanden
-    capture_continuous(24, file_path)
+    capture_continuous(24)
