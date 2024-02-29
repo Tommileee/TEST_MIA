@@ -207,6 +207,8 @@ if __name__ == "__main__":
 
     try:
         tornado.ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        print("Shutting down server.")
     finally:
         camera_stream.close()
 
