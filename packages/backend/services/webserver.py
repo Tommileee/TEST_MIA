@@ -28,27 +28,45 @@ from shared.mq.publisher import Publisher
 from shared.mq.typings.message import Message
 from tornado.process import cpu_count
 
+
+import tornado.web
+import tornado.gen
+from tornado.concurrent import run_on_executor
+from concurrent.futures import ThreadPoolExecutor
+
+from camera_file import CameraStream  # Stellen Sie sicher, dass camera_file.py im gleichen Verzeichnis ist
+
+
 publisher = Publisher()
 arduino = Arduino()
 
+camera_stream = CameraStream()
+
 class MJPEGStreamHandler(tornado.web.RequestHandler):
-    async def get(self):
+    # Executor für unsere asynchrone Operation
+    executor = ThreadPoolExecutor(max_workers=4)
+
+    @run_on_executor
+    def get_frame(self):
+        # Diese Methode ruft den Frame synchron ab,
+        # wird aber im Thread-Executor ausgeführt, um Nicht-Blockierung zu gewährleisten.
+        return camera_stream.get_frame()
+
+    @tornado.gen.coroutine
+    def get(self):
         self.set_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
-        capture = cv2.VideoCapture('/dev/video0')
 
         while True:
-            success, frame = capture.read()
-            if not success:
-                capture.release()
-                break
+            frame = yield self.get_frame()
+            if not frame:
+                break  # Beenden, wenn kein Frame erhalten wird
 
-            _, jpeg = cv2.imencode('.jpg', frame)
             self.write("--frame\r\n")
             self.write("Content-Type: image/jpeg\r\n")
-            self.write("Content-Length: {}\r\n\r\n".format(len(jpeg)))
-            self.write(jpeg.tobytes())
+            self.write("Content-Length: {}\r\n\r\n".format(len(frame)))
+            self.write(frame)
             self.write("\r\n")
-            await self.flush()
+            yield self.flush()
 
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
@@ -196,7 +214,10 @@ if __name__ == "__main__":
     server.bind(1606)  # Bind to port 8888 or any other port you prefer
     #server.start(0)  # Automatically start the same number of processes as cores available
 
-    tornado.ioloop.IOLoop.current().start()
+    try:
+        tornado.ioloop.IOLoop.current().start()
+    finally:
+        camera_stream.close()
 
     os.unlink(cert_file_path)
     os.unlink(key_file_path)
