@@ -6,6 +6,7 @@ import ssl
 import tempfile
 from datetime import timezone
 import cv2
+import numpy as np
 
 import tornado.ioloop
 import tornado.web
@@ -31,15 +32,14 @@ publisher = Publisher()
 arduino = Arduino()
 
 class MJPEGStreamHandler(tornado.web.RequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.coroutine
-    def get(self):
+    async def get(self):
         self.set_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
         capture = cv2.VideoCapture('/dev/video0')
 
         while True:
             success, frame = capture.read()
             if not success:
+                capture.release()
                 break
 
             _, jpeg = cv2.imencode('.jpg', frame)
@@ -48,11 +48,7 @@ class MJPEGStreamHandler(tornado.web.RequestHandler):
             self.write("Content-Length: {}\r\n\r\n".format(len(jpeg)))
             self.write(jpeg.tobytes())
             self.write("\r\n")
-
-            # Nicht blockieren, ermöglicht das Senden des Frames an den Client
-            yield tornado.gen.Task(self.flush)
-
-        capture.release()
+            await self.flush()
 
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
@@ -66,14 +62,14 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_status(204)  # No Content
 
 class DrivingAdvancedHandler(BaseHandler):
-    async def post(self):  # Changed to async to better handle I/O operations
+    async def post(self):
         try:
             data = json.loads(self.request.body)
             motor_left = data.get("motor_left")
             motor_right = data.get("motor_right")
-            client_now = data.get("now")  # unix timestamp in seconds
+            client_now = data.get("now")
             utc_now = datetime.datetime.now(timezone.utc)
-            unix_timestamp = utc_now.timestamp()  # unix timestamp in seconds
+            unix_timestamp = utc_now.timestamp()
 
             latency = unix_timestamp - client_now
 
@@ -89,14 +85,14 @@ class DrivingAdvancedHandler(BaseHandler):
             self.write({"error": "Invalid JSON"})
 
 class DrivingSimpleHandler(BaseHandler):
-    async def post(self):  # Changed to async for consistency and future proofing
+    async def post(self):
         try:
             data = json.loads(self.request.body)
             speed = data.get("speed")
             direction = data.get("direction")
-            client_now = data.get("now")  # unix timestamp in seconds
+            client_now = data.get("now")
             utc_now = datetime.datetime.now(timezone.utc)
-            unix_timestamp = utc_now.timestamp()  # unix timestamp in seconds
+            unix_timestamp = utc_now.timestamp()
 
             latency = unix_timestamp - client_now
 
@@ -154,7 +150,6 @@ def make_app():
         (r"/websocket", WebSocketHandler),
         (r"/mjpeg-stream", MJPEGStreamHandler),
         (r"/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(os.path.dirname(__file__), "shared/web")}),
-        
     ])
 
 def generate_adhoc_ssl_pair(cn="localhost", san=None):
@@ -198,8 +193,8 @@ if __name__ == "__main__":
     ssl_ctx.load_cert_chain(certfile=cert_file_path, keyfile=key_file_path)
 
     server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_ctx)
-    server.bind(8888)  # Bind to port 8888 or any other port you prefer
-    server.start(0)  # Automatically start the same number of processes as cores available
+    server.bind(1606)  # Bind to port 8888 or any other port you prefer
+    #server.start(0)  # Automatically start the same number of processes as cores available
 
     tornado.ioloop.IOLoop.current().start()
 
