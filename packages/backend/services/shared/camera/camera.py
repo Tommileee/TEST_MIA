@@ -1,40 +1,34 @@
-import io
+import cv2
 import threading
-
-from picamera2 import Picamera2
-from picamera2.encoders import JpegEncoder
-from picamera2.outputs import FileOutput
-
-
-class StreamingOutput(io.BufferedIOBase):
-    def __init__(self):
-        self.frame = None
-        self.condition = threading.Condition()
-
-    def write(self, buffer):
-        with self.condition:
-            self.frame = buffer
-            self.condition.notify_all()
-
 
 class CameraStream:
     def __init__(self):
-        self.picam2 = Picamera2()
-        self.picam2.configure(
-            self.picam2.create_video_configuration(
-                main={
-                    "size": (640, 480),
-                }
-            )
-        )
-        self.output = StreamingOutput()
-        self.picam2.start_recording(JpegEncoder(), FileOutput(self.output))
+        # Initialisieren der Kamera
+        self.capture = cv2.VideoCapture(0)  # 0 ist normalerweise die Standardkamera
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
+        self.frame = None
+        self.running = True
+        
+        # Starten des Threads, um Kameraframes kontinuierlich zu lesen
+        self.thread = threading.Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.thread.start()
+
+    def update(self):
+        # Lesen der Frames in einem separaten Thread
+        while self.running:
+            success, frame = self.capture.read()
+            if success:
+                self.frame = frame
 
     def get_frame(self):
-        with self.output.condition:
-            self.output.condition.wait()
-            return self.output.frame
+        # Rückgabe des aktuellen Frames
+        return self.frame
 
     def close(self):
-        self.picam2.stop_recording()
-        self.picam2.close()
+        # Beenden des Frame-Lese-Threads und Freigabe der Kamera
+        self.running = False
+        self.thread.join()
+        self.capture.release()
